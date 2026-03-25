@@ -1,0 +1,12 @@
+[tags]
+include = [
+  "PatientName",
+  "PatientID",
+  "Modality",
+  "StudyDate",
+  "StudyDescription",
+  "SeriesDescription",
+  "SOPInstanceUID",
+  "Rows",
+  "Columns",
+]
