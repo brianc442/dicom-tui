@@ -25,16 +25,17 @@ class FileListPanel(Widget):
     def compose(self) -> ComposeResult:
         yield ListView()
 
-    def load_directory(self, path: Path) -> None:
-        """Scan `path` for DICOM files and populate the list."""
+    def load_directory(self, path: Path) -> list[Path]:
+        """Scan `path` for DICOM files, populate the list, and return discovered files."""
         list_view = self.query_one(ListView)
         list_view.clear()
         self._files = find_dicoms(path)
         if not self._files:
             list_view.append(ListItem(Label("No DICOM files found")))
-            return
-        for f in self._files:
-            list_view.append(ListItem(Label(f.name)))
+        else:
+            for f in self._files:
+                list_view.append(ListItem(Label(f.name)))
+        return self._files
 
     def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         idx = self.query_one(ListView).index

@@ -3,25 +3,19 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import ScrollableContainer, Vertical
-from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Label
 
 from ..config import save_config
+from ._base_modal import EscapeModal
 
 
-class FilterModal(ModalScreen[list[str] | None]):
+class FilterModal(EscapeModal[list[str] | None]):
     """Modal for selecting which tags to display, with optional save-to-config."""
 
-    DEFAULT_CSS = """
-    FilterModal {
-        align: center middle;
-    }
+    DEFAULT_CSS = EscapeModal.DEFAULT_CSS + """
     FilterModal > Vertical {
         width: 50;
         height: 80%;
-        border: solid $primary;
-        padding: 1 2;
-        background: $surface;
     }
     FilterModal ScrollableContainer {
         height: 1fr;
@@ -59,8 +53,8 @@ class FilterModal(ModalScreen[list[str] | None]):
             self.dismiss(None)
         elif event.button.id == "confirm":
             include = [
-                self._all_tags[i]
-                for i, _ in enumerate(self._all_tags)
+                tag
+                for i, tag in enumerate(self._all_tags)
                 if self.query_one(f"#tag-{i}", Checkbox).value
             ]
             if self.query_one("#save-to-config", Checkbox).value:
@@ -68,6 +62,3 @@ class FilterModal(ModalScreen[list[str] | None]):
                 save_config(target, include)
             self.dismiss(include)
 
-    def on_key(self, event) -> None:
-        if event.key == "escape":
-            self.dismiss(None)

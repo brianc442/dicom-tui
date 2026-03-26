@@ -3,25 +3,19 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
-from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, RadioButton, RadioSet
 
 from ..exporter import default_output_path, export_csv, export_json
+from ._base_modal import EscapeModal
 
 
-class ExportModal(ModalScreen[None]):
+class ExportModal(EscapeModal[None]):
     """Modal for configuring and triggering a metadata export."""
 
-    DEFAULT_CSS = """
-    ExportModal {
-        align: center middle;
-    }
+    DEFAULT_CSS = EscapeModal.DEFAULT_CSS + """
     ExportModal > Vertical {
         width: 60;
         height: auto;
-        border: solid $primary;
-        padding: 1 2;
-        background: $surface;
     }
     """
 
@@ -56,23 +50,16 @@ class ExportModal(ModalScreen[None]):
             yield Button("Cancel", id="cancel")
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        # Keep output path extension in sync with format selection
         if event.radio_set.id == "format":
             ext = "json" if event.index == 1 else "csv"
             current = self.query_one("#output-path", Input).value
-            if current.endswith(".csv") or current.endswith(".json"):
-                base = current.rsplit(".", 1)[0]
-                self.query_one("#output-path", Input).value = f"{base}.{ext}"
+            self.query_one("#output-path", Input).value = str(Path(current).with_suffix(f".{ext}"))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "cancel":
             self.dismiss(None)
         elif event.button.id == "confirm":
             self._do_export()
-
-    def on_key(self, event) -> None:
-        if event.key == "escape":
-            self.dismiss(None)
 
     def _do_export(self) -> None:
         scope_radio = self.query_one("#scope", RadioSet)

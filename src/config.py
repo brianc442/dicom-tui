@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -41,13 +41,13 @@ def _config_candidates(explicit: Path | None) -> list[Path]:
 
 def load_config(path: Path | None = None) -> Config:
     for candidate in _config_candidates(path):
-        if not candidate.exists():
-            continue
         try:
             with open(candidate, "rb") as f:
                 data = tomllib.load(f)
             include = data.get("tags", {}).get("include", DEFAULT_TAGS[:])
             return Config(include=include, source_path=candidate)
+        except FileNotFoundError:
+            continue
         except tomllib.TOMLDecodeError as e:
             return Config(
                 include=DEFAULT_TAGS[:],
@@ -59,9 +59,11 @@ def load_config(path: Path | None = None) -> Config:
 
 def save_config(path: Path, include: list[str]) -> None:
     existing: dict = {}
-    if path.exists():
+    try:
         with open(path, "rb") as f:
             existing = tomllib.load(f)
+    except FileNotFoundError:
+        pass
     existing.setdefault("tags", {})["include"] = include
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as f:

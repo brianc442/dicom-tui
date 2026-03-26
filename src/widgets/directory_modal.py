@@ -3,23 +3,18 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
-from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label
 
+from ._base_modal import EscapeModal
 
-class DirectoryModal(ModalScreen[Path | None]):
+
+class DirectoryModal(EscapeModal[Path | None]):
     """Modal for changing the current directory."""
 
-    DEFAULT_CSS = """
-    DirectoryModal {
-        align: center middle;
-    }
+    DEFAULT_CSS = EscapeModal.DEFAULT_CSS + """
     DirectoryModal > Vertical {
         width: 60;
         height: auto;
-        border: solid $primary;
-        padding: 1 2;
-        background: $surface;
     }
     """
 
@@ -42,12 +37,7 @@ class DirectoryModal(ModalScreen[Path | None]):
             self._try_confirm()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        # Handles Enter key while the Input widget has focus
         self._try_confirm()
-
-    def on_key(self, event) -> None:
-        if event.key == "escape":
-            self.dismiss(None)
 
     def _try_confirm(self) -> None:
         path_str = self.query_one("#path-input", Input).value.strip()

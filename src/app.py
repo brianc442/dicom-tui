@@ -6,7 +6,7 @@ from textual.containers import Horizontal
 from textual.widgets import Footer, Header
 
 from .config import Config
-from .dicom_reader import find_dicoms, load_tags
+from .dicom_reader import load_tags
 from .widgets.directory_modal import DirectoryModal
 from .widgets.export_modal import ExportModal
 from .widgets.file_list import FileListPanel
@@ -41,7 +41,7 @@ class DicomTuiApp(App):
         super().__init__()
         self._current_dir = Path(directory).resolve()
         self._config = config
-        self._all_files: list[Path] = find_dicoms(self._current_dir)
+        self._all_files: list[Path] = []
         self._current_file: Path | None = None
         self._all_tags: list[str] = []
 
@@ -53,7 +53,7 @@ class DicomTuiApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.query_one(FileListPanel).load_directory(self._current_dir)
+        self._all_files = self.query_one(FileListPanel).load_directory(self._current_dir)
         if self._config.warning:
             self.notify(self._config.warning, severity="warning")
 
@@ -99,8 +99,7 @@ class DicomTuiApp(App):
     def _on_directory_result(self, path: Path | None) -> None:
         if path:
             self._current_dir = path
-            self._all_files = find_dicoms(path)
             self._current_file = None
             self._all_tags = []
             self.query_one(MetadataPanel).load_file({})
-            self.query_one(FileListPanel).load_directory(path)
+            self._all_files = self.query_one(FileListPanel).load_directory(path)
