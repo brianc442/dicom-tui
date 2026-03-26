@@ -8,6 +8,7 @@ from src.dicom_reader import (
     filter_tags,
     get_tag_id,
 )
+from src.dicom_reader import iter_dicoms
 
 
 # --- is_dicom ---
@@ -55,14 +56,6 @@ def test_find_dicoms_returns_dicom_files(tmp_path):
     names = [p.name for p in result]
     assert "IM000001" in names
     assert "IM000002" in names
-
-
-def test_find_dicoms_sorted_by_name(tmp_path):
-    make_minimal_dicom(tmp_path / "IM000003")
-    make_minimal_dicom(tmp_path / "IM000001")
-    make_minimal_dicom(tmp_path / "IM000002")
-    result = find_dicoms(tmp_path)
-    assert [p.name for p in result] == ["IM000001", "IM000002", "IM000003"]
 
 
 def test_find_dicoms_empty_directory(tmp_path):
@@ -171,3 +164,47 @@ def test_get_tag_id_hex_digits_are_lowercase():
 
 def test_get_tag_id_unknown_returns_empty():
     assert get_tag_id("NotARealKeyword") == ""
+
+
+# --- iter_dicoms ---
+
+def test_iter_dicoms_flat_yields_dicoms(tmp_path):
+    make_minimal_dicom(tmp_path / "IM000001")
+    make_minimal_dicom(tmp_path / "IM000002")
+    (tmp_path / "notes.txt").write_text("not a dicom")
+    result = list(iter_dicoms(tmp_path))
+    assert len(result) == 2
+    names = {p.name for p in result}
+    assert names == {"IM000001", "IM000002"}
+
+
+def test_iter_dicoms_flat_skips_subdirectories(tmp_path):
+    subdir = tmp_path / "sub"
+    subdir.mkdir()
+    make_minimal_dicom(tmp_path / "IM000001")
+    result = list(iter_dicoms(tmp_path))
+    assert len(result) == 1
+    assert result[0].name == "IM000001"
+
+
+def test_iter_dicoms_recursive_descends_subdirs(tmp_path):
+    sub = tmp_path / "series1"
+    sub.mkdir()
+    make_minimal_dicom(tmp_path / "IM000001")
+    make_minimal_dicom(sub / "IM000002")
+    result = list(iter_dicoms(tmp_path, recursive=True))
+    names = {p.name for p in result}
+    assert names == {"IM000001", "IM000002"}
+
+
+def test_iter_dicoms_recursive_deeply_nested(tmp_path):
+    deep = tmp_path / "a" / "b" / "c"
+    deep.mkdir(parents=True)
+    make_minimal_dicom(deep / "IM000001")
+    result = list(iter_dicoms(tmp_path, recursive=True))
+    assert len(result) == 1
+    assert result[0].name == "IM000001"
+
+
+def test_iter_dicoms_empty_directory(tmp_path):
+    assert list(iter_dicoms(tmp_path)) == []

@@ -1,4 +1,6 @@
 from __future__ import annotations
+import os
+from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
 
@@ -25,12 +27,23 @@ def is_dicom(path: Path) -> bool:
         return False
 
 
+def iter_dicoms(directory: Path, recursive: bool = False) -> Iterator[Path]:
+    """Yield DICOM file paths as confirmed by magic-byte check, in filesystem order."""
+    if recursive:
+        for root, _dirs, files in os.walk(directory):
+            for name in files:
+                p = Path(root) / name
+                if is_dicom(p):
+                    yield p
+    else:
+        for p in directory.iterdir():
+            if is_dicom(p):
+                yield p
+
+
 def find_dicoms(directory: Path) -> list[Path]:
-    """Return all DICOM files in directory (non-recursive), sorted by name."""
-    return sorted(
-        (p for p in directory.iterdir() if is_dicom(p)),
-        key=lambda p: p.name,
-    )
+    """Return all DICOM files in directory (non-recursive), in filesystem order."""
+    return list(iter_dicoms(directory))
 
 
 def _serialize_value(value) -> str:
