@@ -2,11 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib  # type: ignore[no-redef]
-
+import tomllib
 import tomli_w
 
 DEFAULT_TAGS: list[str] = [

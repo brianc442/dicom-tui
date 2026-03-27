@@ -6,7 +6,7 @@
 
 **Architecture:** `dicom_reader.py` gains a `DicomStudy` dataclass, formatting helpers, and `find_representative()` for locating the first valid DICOM inside any folder regardless of nesting depth. `FileListPanel` is redesigned to scan immediate children of the selected directory and display two-line entries with background-loaded metadata. `exporter.py` and `ExportModal` are updated to work with `DicomStudy` lists instead of flat `Path` lists.
 
-**Tech Stack:** Python 3.10+, pydicom, Textual, pytest, uv
+**Tech Stack:** Python 3.14+, pydicom, Textual, pytest, uv
 
 ---
 
