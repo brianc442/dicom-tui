@@ -58,7 +58,6 @@ class DicomTuiApp(App):
         self._config = config
         self._current_study: DicomStudy | None = None
         self._all_tags: list[str] = []
-        self._selected_tree_dir: Path = self._current_dir
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -69,7 +68,6 @@ class DicomTuiApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        self._selected_tree_dir = self._current_dir
         self.query_one(FileListPanel).scan(self._current_dir)
         if self._config.warning:
             self.notify(self._config.warning, severity="warning")
@@ -85,7 +83,6 @@ class DicomTuiApp(App):
     def on_directory_tree_directory_selected(
         self, event: DirectoryTree.DirectorySelected
     ) -> None:
-        self._selected_tree_dir = event.path
         self._current_study = None
         self._all_tags = []
         self.query_one(MetadataPanel).load_file({})
@@ -128,7 +125,6 @@ class DicomTuiApp(App):
     def _on_directory_result(self, path: Path | None) -> None:
         if path:
             self._current_dir = path
-            self._selected_tree_dir = path
             self._current_study = None
             self._all_tags = []
             self.query_one(MetadataPanel).load_file({})

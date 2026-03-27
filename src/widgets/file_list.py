@@ -44,7 +44,7 @@ class FileListPanel(Widget):
 
     def __init__(self) -> None:
         super().__init__()
-        self._studies: list[DicomStudy] = []
+        self._study_map: dict[int, DicomStudy] = {}
         self._scan_id: int = 0
         self._item_map: dict[int, ListItem] = {}
 
@@ -54,8 +54,8 @@ class FileListPanel(Widget):
 
     @property
     def studies(self) -> list[DicomStudy]:
-        """Current list of confirmed DICOM studies."""
-        return list(self._studies)
+        """Current list of confirmed DICOM studies in alphabetical order."""
+        return [self._study_map[cid] for cid in sorted(self._study_map.keys())]
 
     def scan(self, path: Path) -> None:
         """Start a background scan of immediate children of `path`.
@@ -65,7 +65,7 @@ class FileListPanel(Widget):
         """
         self._scan_id += 1
         current_id = self._scan_id
-        self._studies = []
+        self._study_map = {}
         self._item_map = {}
 
         list_view = self.query_one(ListView)
@@ -132,6 +132,9 @@ class FileListPanel(Widget):
         item = self._item_map.pop(candidate_id, None)
         if item is not None:
             item.remove()
+            self.query_one("#scan-status", Label).update(
+                f"Scanning\u2026 ({len(self._item_map)} found)"
+            )
 
     def _on_study_ready(
         self,
@@ -142,7 +145,7 @@ class FileListPanel(Widget):
     ) -> None:
         if scan_id != self._scan_id:
             return
-        self._studies.append(study)
+        self._study_map[candidate_id] = study
         item = self._item_map.get(candidate_id)
         if item is not None:
             item.query_one(".study-meta", Label).update(summary)
@@ -152,12 +155,17 @@ class FileListPanel(Widget):
             return
         status = self.query_one("#scan-status", Label)
         status.display = False
-        if not self._studies:
+        if not self._study_map:
             self.query_one(ListView).append(
                 ListItem(Label("No DICOM studies found"))
             )
 
     def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         idx = self.query_one(ListView).index
-        if idx is not None and 0 <= idx < len(self._studies):
-            self.post_message(self.FileSelected(self._studies[idx]))
+        if idx is None:
+            return
+        visible_ids = sorted(self._item_map.keys())
+        if 0 <= idx < len(visible_ids):
+            study = self._study_map.get(visible_ids[idx])
+            if study is not None:
+                self.post_message(self.FileSelected(study))
