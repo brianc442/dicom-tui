@@ -6,5 +6,6 @@ dist/
 uv.lock
 .worktrees/
 docs/superpowers
+.superpowers/
 samples/
 
