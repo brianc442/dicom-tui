@@ -5,6 +5,7 @@ from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Button, Input, Label, RadioButton, RadioSet
 
+from ..dicom_reader import DicomStudy
 from ..exporter import default_output_path, export_csv, export_json
 from ._base_modal import EscapeModal
 
@@ -21,21 +22,21 @@ class ExportModal(EscapeModal[None]):
 
     def __init__(
         self,
-        all_files: list[Path],
-        current_file: Path | None,
+        all_studies: list[DicomStudy],
+        current_study: DicomStudy | None,
         active_tags: list[str],
     ) -> None:
         super().__init__()
-        self._all_files = all_files
-        self._current_file = current_file
+        self._all_studies = all_studies
+        self._current_study = current_study
         self._active_tags = active_tags
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label("Export scope:")
             with RadioSet(id="scope"):
-                yield RadioButton("Current file", value=True, id="scope-current")
-                yield RadioButton("All files in directory", id="scope-all")
+                yield RadioButton("Current study", value=True, id="scope-current")
+                yield RadioButton("All studies in directory", id="scope-all")
             yield Label("Format:")
             with RadioSet(id="format"):
                 yield RadioButton("CSV", value=True, id="fmt-csv")
@@ -53,7 +54,9 @@ class ExportModal(EscapeModal[None]):
         if event.radio_set.id == "format":
             ext = "json" if event.index == 1 else "csv"
             current = self.query_one("#output-path", Input).value
-            self.query_one("#output-path", Input).value = str(Path(current).with_suffix(f".{ext}"))
+            self.query_one("#output-path", Input).value = str(
+                Path(current).with_suffix(f".{ext}")
+            )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "cancel":
@@ -69,18 +72,18 @@ class ExportModal(EscapeModal[None]):
         use_all = scope_radio.pressed_index == 1
         use_json = fmt_radio.pressed_index == 1
 
-        files = self._all_files if use_all else (
-            [self._current_file] if self._current_file else []
+        studies = self._all_studies if use_all else (
+            [self._current_study] if self._current_study else []
         )
-        if not files:
-            self.query_one("#error-label", Label).update("No file selected.")
+        if not studies:
+            self.query_one("#error-label", Label).update("No study selected.")
             return
 
         try:
             if use_json:
-                export_json(files, self._active_tags, output)
+                export_json(studies, self._active_tags, output)
             else:
-                export_csv(files, self._active_tags, output)
+                export_csv(studies, self._active_tags, output)
             self.app.notify(f"Export saved to {output}")
             self.dismiss(None)
         except Exception as exc:
