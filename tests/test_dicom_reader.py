@@ -315,3 +315,48 @@ def test_build_inline_summary_no_study_description_uses_series():
 
 def test_build_inline_summary_empty_tags_returns_empty_string():
     assert build_inline_summary({}) == ""
+
+
+# --- find_representative ---
+
+from src.dicom_reader import find_representative
+
+
+def test_find_representative_dicom_file_returns_itself(tmp_path):
+    p = make_minimal_dicom(tmp_path / "scan.dcm")
+    assert find_representative(p) == p
+
+
+def test_find_representative_non_dicom_file_returns_none(tmp_path):
+    p = tmp_path / "readme.txt"
+    p.write_text("not a dicom")
+    assert find_representative(p) is None
+
+
+def test_find_representative_flat_directory(tmp_path):
+    study_dir = tmp_path / "study"
+    study_dir.mkdir()
+    p = make_minimal_dicom(study_dir / "Slice0001")
+    assert find_representative(study_dir) == p
+
+
+def test_find_representative_nested_directory(tmp_path):
+    study_dir = tmp_path / "study"
+    deep = study_dir / "a" / "b" / "c"
+    deep.mkdir(parents=True)
+    p = make_minimal_dicom(deep / "00001DCM")
+    result = find_representative(study_dir)
+    assert result == p
+
+
+def test_find_representative_empty_directory_returns_none(tmp_path):
+    study_dir = tmp_path / "study"
+    study_dir.mkdir()
+    assert find_representative(study_dir) is None
+
+
+def test_find_representative_directory_no_dicoms_returns_none(tmp_path):
+    study_dir = tmp_path / "study"
+    study_dir.mkdir()
+    (study_dir / "readme.txt").write_text("not a dicom")
+    assert find_representative(study_dir) is None

@@ -100,6 +100,19 @@ def find_dicoms(directory: Path) -> list[Path]:
     return list(iter_dicoms(directory))
 
 
+def find_representative(path: Path) -> Path | None:
+    """Return the first valid DICOM inside path (recursing into dirs), or None.
+
+    If path is a file, returns it directly if it passes is_dicom(), else None.
+    If path is a directory, returns the first result from iter_dicoms(recursive=True).
+    """
+    if path.is_file():
+        return path if is_dicom(path) else None
+    if path.is_dir():
+        return next(iter_dicoms(path, recursive=True), None)
+    return None
+
+
 def _serialize_value(value) -> str:
     if isinstance(value, bytes):
         return f"<binary: {len(value)} bytes>"
