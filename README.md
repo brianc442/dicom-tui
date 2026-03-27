@@ -1,4 +1,4 @@
-# DICOM Metadata Extractor
+# dicom-tui
 
 A terminal UI for browsing and exporting DICOM file metadata.
 
