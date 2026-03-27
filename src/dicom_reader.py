@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 from collections.abc import Iterator
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
@@ -10,6 +11,59 @@ import pydicom.sequence
 from pydicom.errors import InvalidDicomError
 from pydicom.datadict import keyword_for_tag, tag_for_keyword
 from pydicom.tag import Tag
+
+@dataclass
+class DicomStudy:
+    display_name: str    # folder name or .dcm filename shown in the list
+    root_path: Path      # the directory or .dcm file (for export labeling)
+    representative: Path # first valid DICOM found inside (for metadata loading)
+    is_dir: bool         # True = multi-file study, False = single-file
+
+
+INLINE_TAGS: list[str] = [
+    "PatientName", "StudyDescription", "SeriesDescription", "StudyDate", "StudyTime"
+]
+
+
+def format_patient_name(value: str) -> str:
+    """Convert DICOM PersonName 'FAMILY^GIVEN^...' to 'Given Family' (title-cased)."""
+    parts = value.split("^")
+    if len(parts) < 2 or not parts[0] or not parts[1]:
+        return value
+    return f"{parts[1].title()} {parts[0].title()}"
+
+
+def format_date(value: str) -> str:
+    """Convert 'YYYYMMDD' to 'YYYY-MM-DD'. Returns original string on bad input."""
+    if len(value) != 8 or not value.isdigit():
+        return value
+    return f"{value[:4]}-{value[4:6]}-{value[6:]}"
+
+
+def format_time(value: str) -> str:
+    """Convert 'HHMMSS[.frac]' to 'HH:MM'. Returns original string if too short."""
+    if len(value) < 4:
+        return value
+    base = value.split(".")[0]
+    return f"{base[:2]}:{base[2:4]}"
+
+
+def build_inline_summary(tags: dict[str, str]) -> str:
+    """Build the subtitle line for a study list entry from pre-filtered INLINE_TAGS."""
+    parts: list[str] = []
+    if pn := tags.get("PatientName"):
+        parts.append(format_patient_name(pn))
+    if sd := tags.get("StudyDescription"):
+        parts.append(sd)
+    if srd := tags.get("SeriesDescription"):
+        parts.append(srd)
+    date_str = format_date(tags["StudyDate"]) if "StudyDate" in tags else ""
+    time_str = format_time(tags["StudyTime"]) if "StudyTime" in tags else ""
+    dt = f"{date_str} {time_str}".strip()
+    if dt:
+        parts.append(dt)
+    return " · ".join(parts)
+
 
 _DICOM_MAGIC = b"DICM"
 _MAGIC_OFFSET = 128

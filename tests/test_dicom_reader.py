@@ -208,3 +208,110 @@ def test_iter_dicoms_recursive_deeply_nested(tmp_path):
 
 def test_iter_dicoms_empty_directory(tmp_path):
     assert list(iter_dicoms(tmp_path)) == []
+
+
+# --- DicomStudy, INLINE_TAGS, formatting helpers ---
+
+from src.dicom_reader import (
+    DicomStudy,
+    INLINE_TAGS,
+    format_patient_name,
+    format_date,
+    format_time,
+    build_inline_summary,
+)
+
+
+def test_dicom_study_is_dataclass():
+    study = DicomStudy(
+        display_name="my_study",
+        root_path=Path("/foo"),
+        representative=Path("/foo/slice.dcm"),
+        is_dir=True,
+    )
+    assert study.display_name == "my_study"
+    assert study.representative == Path("/foo/slice.dcm")
+    assert study.is_dir is True
+
+
+def test_inline_tags_contains_required_fields():
+    assert set(INLINE_TAGS) >= {
+        "PatientName", "StudyDescription", "SeriesDescription",
+        "StudyDate", "StudyTime",
+    }
+
+
+def test_format_patient_name_standard():
+    assert format_patient_name("LEON^LUIS") == "Luis Leon"
+
+
+def test_format_patient_name_middle_component_ignored():
+    assert format_patient_name("DOE^JOHN^MIDDLE") == "John Doe"
+
+
+def test_format_patient_name_single_component_returns_original():
+    assert format_patient_name("SINGLETON") == "SINGLETON"
+
+
+def test_format_patient_name_empty_given_returns_original():
+    assert format_patient_name("FAMILY^") == "FAMILY^"
+
+
+def test_format_date_standard():
+    assert format_date("20260307") == "2026-03-07"
+
+
+def test_format_date_short_returns_original():
+    assert format_date("2026") == "2026"
+
+
+def test_format_date_non_digits_returns_original():
+    assert format_date("notadate") == "notadate"
+
+
+def test_format_time_full():
+    assert format_time("134109") == "13:41"
+
+
+def test_format_time_with_fractional_seconds():
+    assert format_time("134109.123456") == "13:41"
+
+
+def test_format_time_too_short_returns_original():
+    assert format_time("13") == "13"
+
+
+def test_build_inline_summary_all_fields():
+    tags = {
+        "PatientName": "LEON^LUIS",
+        "StudyDescription": "Jaw and teeth",
+        "SeriesDescription": "3D CBCT Image",
+        "StudyDate": "20260307",
+        "StudyTime": "134109",
+    }
+    assert build_inline_summary(tags) == (
+        "Luis Leon · Jaw and teeth · 3D CBCT Image · 2026-03-07 13:41"
+    )
+
+
+def test_build_inline_summary_no_series_description():
+    tags = {
+        "PatientName": "SCHEGAR^DAWN",
+        "StudyDescription": "Denture scan #2",
+        "StudyDate": "20260126",
+    }
+    assert build_inline_summary(tags) == "Dawn Schegar · Denture scan #2 · 2026-01-26"
+
+
+def test_build_inline_summary_no_study_description_uses_series():
+    tags = {
+        "PatientName": "DAWSON^ROGER",
+        "SeriesDescription": "Post-op CBCT",
+        "StudyDate": "20260310",
+        "StudyTime": "141758",
+    }
+    assert build_inline_summary(tags) == "Roger Dawson · Post-op CBCT · 2026-03-10 14:17"
+
+
+def test_build_inline_summary_empty_tags_returns_empty_string():
+    assert build_inline_summary({}) == ""
