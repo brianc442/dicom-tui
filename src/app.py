@@ -6,7 +6,7 @@ from textual.containers import Horizontal
 from textual.widgets import DirectoryTree, Footer, Header
 
 from .config import Config
-from .dicom_reader import load_tags
+from .dicom_reader import DicomStudy, load_tags
 from .widgets.directory_modal import DirectoryModal
 from .widgets.directory_tree_panel import DirectoryTreePanel
 from .widgets.export_modal import ExportModal
@@ -21,7 +21,6 @@ class DicomTuiApp(App):
     TITLE = "DICOM Metadata Extractor"
     BINDINGS = [
         ("backslash", "toggle_tree", "Tree"),
-        ("r", "recursive", "Recurse"),
         ("e", "export", "Export"),
         ("f", "filter", "Filter"),
         ("d", "directory", "Directory"),
@@ -57,9 +56,8 @@ class DicomTuiApp(App):
         super().__init__()
         self._current_dir = Path(directory).resolve()
         self._config = config
-        self._current_file: Path | None = None
+        self._current_study: DicomStudy | None = None
         self._all_tags: list[str] = []
-        self._recursive_mode: bool = False
         self._selected_tree_dir: Path = self._current_dir
 
     def compose(self) -> ComposeResult:
@@ -79,8 +77,8 @@ class DicomTuiApp(App):
     def on_file_list_panel_file_selected(
         self, event: FileListPanel.FileSelected
     ) -> None:
-        self._current_file = event.path
-        full_tags = load_tags(event.path)
+        self._current_study = event.study
+        full_tags = load_tags(event.study.representative)
         self._all_tags = list(full_tags.keys())
         self.query_one(MetadataPanel).load_file(full_tags)
 
@@ -88,27 +86,19 @@ class DicomTuiApp(App):
         self, event: DirectoryTree.DirectorySelected
     ) -> None:
         self._selected_tree_dir = event.path
-        self._current_file = None
+        self._current_study = None
         self._all_tags = []
         self.query_one(MetadataPanel).load_file({})
-        self.query_one(FileListPanel).scan(event.path, recursive=self._recursive_mode)
+        self.query_one(FileListPanel).scan(event.path)
 
     def action_toggle_tree(self) -> None:
         self.query_one(Horizontal).toggle_class("tree-hidden")
 
-    def action_recursive(self) -> None:
-        self._recursive_mode = not self._recursive_mode
-        if self._recursive_mode:
-            self.query_one(DirectoryTreePanel).expand_all()
-        self.query_one(FileListPanel).scan(
-            self._selected_tree_dir, recursive=self._recursive_mode
-        )
-
     def action_export(self) -> None:
         self.push_screen(
             ExportModal(
-                all_files=self.query_one(FileListPanel).files,
-                current_file=self._current_file,
+                all_studies=self.query_one(FileListPanel).studies,
+                current_study=self._current_study,
                 active_tags=self._config.include,
             )
         )
@@ -139,8 +129,8 @@ class DicomTuiApp(App):
         if path:
             self._current_dir = path
             self._selected_tree_dir = path
-            self._current_file = None
+            self._current_study = None
             self._all_tags = []
             self.query_one(MetadataPanel).load_file({})
             self.query_one(DirectoryTreePanel).load_directory(path)
-            self.query_one(FileListPanel).scan(path, recursive=self._recursive_mode)
+            self.query_one(FileListPanel).scan(path)
